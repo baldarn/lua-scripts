@@ -13,11 +13,9 @@ function wave_effect()
 
     local lum = 7
     for cont = 1,8 do
-      for x = 1,7 do
-        tmr.delay(500)
-        dataset[cont] = 0
-        display.write(dataset)
-      end
+      tmr.delay(10000)
+      dataset[cont] = 0
+      display.write(dataset)
       display.brightness(lum)
       lum = lum-1
     end
@@ -28,13 +26,12 @@ function wave_effect()
     tmr.delay(3000)
 
     for cont = 8,1,-1 do
-      for x = 1,7 do
-        tmr.delay(500)
-        dataset[cont] = 0xff
-        display.write(dataset)
-      end
+      tmr.delay(10000)
+      dataset[cont] = 0xff
+      display.write(dataset)
       display.brightness(cont)
     end
+    display.brightness(0)
   end
 end
 
