@@ -51,6 +51,12 @@ mqtt_callbacks["/radiolog/show"] = showfunc
 
 function dispatch(client, topic, data)
     print("rev: " .. topic .. " " .. data)
+
+    if string.find(topic, dev_ID) ~= nil then
+      print("For me..".. dev_ID)
+      topic = "/radiolog/show"
+    end
+
     if data~=nil and mqtt_callbacks[topic] then
         mqtt_callbacks[topic](client, data)
     end
@@ -79,11 +85,11 @@ function foo(T)
 
     m:connect('mqtt.asterix.cloud', 1883, 0, function(client)
     print("connected")
-    dev_ID = "Node-"..string.sub(string.gsub(wifi.sta.getmac(), ":",""), 7)
+    dev_ID = "Node_"..string.sub(string.gsub(wifi.sta.getmac(), ":",""), 7)
 
-    client:publish("/radiolog/"..dev_ID.."/status", "hello", 0, 0)
-    client:subscribe("/radiolog/show", 0, function(client)
-        print("subscribe success")
+    client:publish("/radiolog/"..dev_ID.."/status", "hello["..T.IP.."]", 0, 0)
+    client:subscribe("/radiolog/show/#", 0, function(client)
+        print("Subscribe to topic with success")
     end)
 
     tmr.alarm(0,10000, 1, function()
