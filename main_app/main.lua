@@ -1,4 +1,4 @@
-local display = require "tm1640"
+local matrix = require "tm1640"
 local net = require "netmodule"
 local efx = require "effect"
 
@@ -10,14 +10,11 @@ local dataset = {}
 local mqtt_callbacks = {}
 
 
-dataset["smile"] = { 0x3C, 0x42, 0xA5, 0x81, 0xA5, 0x99, 0x42, 0x3C}
-dataset["cross"] = { 0x81, 0x42, 0x24, 0x18, 0x18, 0x24, 0x42, 0x81}
-
 print("=== Main ===")
 print("- devId: "..dev_ID)
-display.init(7, 5)
-display.brightness(5)
-display.write(dataset["cross"])
+matrix.init(7, 5)
+efx.init(matrix)
+efx.on_start()
 
 
 function reverseBits(a)
@@ -44,7 +41,7 @@ function showfunc(client, data)
             table.insert(d, reverseBits(v))
         end
         if (d) then
-            display.write(d)
+          efx.show(d)
         end
     end
 end
@@ -61,7 +58,7 @@ end
 
 function foo(T)
     print("Wifi connection is ready! "..T.IP)
-    display.write(dataset["smile"])
+    efx.connect_ok()
     wifi_connect = true
     m = mqtt.Client("radiolog", 60)
 
@@ -79,7 +76,6 @@ function foo(T)
         print(topic .. " partial overflowed message: " .. data )
     end)
 
-    efx.wave_effect()
 
     m:connect('mqtt.asterix.cloud', 1883, 0, function(client)
     print("connected")
