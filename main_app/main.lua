@@ -5,9 +5,10 @@ local efx = require "effect"
 local mqtt_status = false
 local wifi_connect = false
 local dev_ID = "TEST" -- HOSTNAME
-local temp = 25
+local meas_temp = 25
 local dataset = {}
 local mqtt_callbacks = {}
+local commads = {}
 
 
 print("=== Main ===")
@@ -15,7 +16,11 @@ print("- devId: "..dev_ID)
 matrix.init(7, 5)
 efx.init(matrix)
 efx.on_start()
-
+ds18b20.setup(2)
+ds18b20.read(
+    function(ind, rom, res, temp, tdec, par)
+      meas_temp = temp
+    end,{})
 
 function reverseBits(a)
     local b = 0x80
@@ -29,8 +34,13 @@ function reverseBits(a)
     return o
 end
 
+commads["demo"] = efx.demo
+
 function cmdfunc(client, data)
     print("Cmd: "..data)
+    if commads[data] then
+      commads[data]()
+    end
 end
 
 function showfunc(client, data)
@@ -50,11 +60,14 @@ mqtt_callbacks["/radiolog/cmd"] = cmdfunc
 mqtt_callbacks["/radiolog/show"] = showfunc
 
 function dispatch(client, topic, data)
-    print("rev: " .. topic .. " " .. data)
+    print("recv: " .. topic .. " " .. data)
 
     if string.find(topic, dev_ID) ~= nil then
       print("For me..".. dev_ID)
-      topic = "/radiolog/show"
+      topic = "/radiolog/cmd"
+      if string.find(topic, "show") ~= nil then
+        topic = "/radiolog/show"
+      end
     end
 
     if data~=nil and mqtt_callbacks[topic] then
@@ -89,7 +102,10 @@ function foo(T)
 
     client:publish("/radiolog/"..dev_ID.."/status", "hello["..T.IP.."]", 0, 0)
     client:subscribe("/radiolog/show/#", 0, function(client)
-        print("Subscribe to topic with success")
+      print("Subscribe [/radiolog/show/#] to topic with success")
+    end)
+    client:subscribe("/radiolog/cmd/#", 0, function(client)
+      print("Subscribe [/radiolog/cmd/#] to topic with success")
     end)
 
     tmr.alarm(0,10000, 1, function()
@@ -97,7 +113,7 @@ function foo(T)
     end)
 
     tmr.alarm(0,15000, 1, function()
-        m:publish("/radiolog/"..dev_ID.."/status", temp, 0, 0)
+        m:publish("/radiolog/"..dev_ID.."/status", meas_temp, 0, 0)
     end)
 
     end,
