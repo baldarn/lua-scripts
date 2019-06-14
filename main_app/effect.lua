@@ -35,6 +35,10 @@ function wave_effect()
   end
 end
 
+function efx.demo()
+  wave_effect()
+end
+
 function efx.connect_ok()
   -- show smile
   display.write({0x3c, 0x42, 0xa5, 0x81, 0xa5, 0x99, 0x42, 0x3c})
