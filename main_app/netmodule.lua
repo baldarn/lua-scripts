@@ -75,7 +75,7 @@ function M.init(call_con, call_ip, call_disc)
     print("Connecting to WiFi access point...")
     wifi.setmode(wifi.STATION)
     wifi.sta.sethostname(M.hostname)
-    wifi.sta.setip({ ip = IP, netmask = NETMASK, gateway = GATEWAY })
+    -- wifi.sta.setip({ ip = IP, netmask = NETMASK, gateway = GATEWAY })
     wifi.sta.config({ ssid=SSID, pwd=PASSWORD })
 end
 
