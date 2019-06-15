@@ -28,18 +28,6 @@ local function readout(temp)
   end
 end
 
-function reverseBits(a)
-    local b = 0x80
-    local o = 0
-    for i=0,7 do
-        if (bit.band(a, bit.lshift(1, i)) ~= 0) then
-            o = bit.bor(o, b)
-        end
-        b = bit.rshift(b, 1)
-    end
-    return o
-end
-
 function cmdfunc(client, data)
     print("Cmd: "..data)
     if mqtt_callbacks[data] then
@@ -48,11 +36,13 @@ function cmdfunc(client, data)
 end
 
 function showfunc(client, data)
-    local d = {}
+    local d = {0, 0, 0, 0, 0, 0, 0, 0}
     if (data) then
+        local j = 8
         for i=1,#data,2 do
-            local v = tonumber(data:sub(i, i+1), 16)
-            table.insert(d, reverseBits(v))
+            d[j] = tonumber(data:sub(i, i+1), 16)
+            j = j - 1
+            print(j)
         end
         if (d) then
           efx.show(d)
