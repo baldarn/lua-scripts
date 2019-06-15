@@ -22,14 +22,9 @@ efx.init(matrix)
 efx.on_start()
 
 local function readout(temp)
-  if ds18b20.sens then
-  print("Total number of DS18B20 sensors: ".. #ds18b20.sens)
-  for i, s in ipairs(ds18b20.sens) do
-    print(string.format("  sensor #%d address: %s%s",  i, ('%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X'):format(s:byte(1,8)), s:byte(9) == 1 and " (parasite)" or ""))
-    end
-  end
   for addr, temp in pairs(temp) do
-    print(string.format("Sensor %s: %s °C", ('%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X'):format(addr:byte(1,8)), temp))
+    meas_temp = temp
+    print(string.format("Sensor %s: %s°C", ('%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X'):format(addr:byte(1,8)), temp))
   end
 end
 
@@ -105,19 +100,21 @@ function handle_mqtt_connect(client)
 
     tmr.create():alarm(30 * 1000, tmr.ALARM_AUTO, function()
       if mqtt_client ~= nil then
-        mqtt_client:publish("/radiolog/"..dev_ID.."/status", tmr.time(), 0, 0)
+        mqtt_client:publish("/radiolog/"..dev_ID.."/uptime", tmr.time(), 0, 0)
       end
     end)
 
     tmr.create():alarm(20 * 1000, tmr.ALARM_AUTO, function()
       if mqtt_client ~= nil then
-        mqtt_client:publish("/radiolog/"..dev_ID.."/status", meas_temp, 0, 0)
+        mqtt_client:publish("/radiolog/"..dev_ID.."/temp", meas_temp, 0, 0)
       end
     end)
 end
 
-function do_mqtt_connect(m)
-  m:connect('mqtt.asterix.cloud', 1883, handle_mqtt_connect, handle_mqtt_error)
+function do_mqtt_connect()
+  if mqtt_client ~= nil then
+    mqtt_client:connect('mqtt.asterix.cloud', 1883, handle_mqtt_connect, handle_mqtt_error)
+  end
 end
 
 function on_networt_connect(T)
@@ -131,11 +128,14 @@ function on_networt_connect(T)
   mqtt_client:on("overflow", function(client, topic, data)
       print(topic .. " partial overflowed message: " .. data)
   end)
-  do_mqtt_connect(mqtt_client)
+  do_mqtt_connect()
 end
 
 net.init(nil, on_networt_connect, nil)
-ds18b20:read_temp(readout, 2, ds18b20.C)
+
+tmr.create():alarm(15 * 1000, tmr.ALARM_AUTO, function()
+  ds18b20:read_temp(readout, 2, ds18b20.C)
+end)
 
 
 
