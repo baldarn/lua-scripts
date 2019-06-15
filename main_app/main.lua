@@ -1,26 +1,37 @@
-local matrix = require "tm1640"
-local net = require "netmodule"
-local efx = require "effect"
+-- node.compile("ds18b20.lua")
+-- node.compile("tm1640.lua")
+-- node.compile("netmodule.lua")
+-- node.compile("effect.lua")
 
-local mqtt_status = false
-local wifi_connect = false
+local matrix = require("tm1640")
+local net = require("netmodule")
+local efx = require("effect")
+local ds18b20 = require("ds18b20")
+
 local dev_ID = "TEST" -- HOSTNAME
 local meas_temp = 25
-local dataset = {}
 local mqtt_callbacks = {}
-local commads = {}
+local mqtt_client
 
 
 print("=== Main ===")
+dev_ID = "Node_"..string.sub(string.gsub(wifi.sta.getmac(), ":",""), 7)
 print("- devId: "..dev_ID)
 matrix.init(7, 5)
 efx.init(matrix)
 efx.on_start()
-ds18b20.setup(2)
-ds18b20.read(
-    function(ind, rom, res, temp, tdec, par)
-      meas_temp = temp
-    end,{})
+
+local function readout(temp)
+  if ds18b20.sens then
+  print("Total number of DS18B20 sensors: ".. #ds18b20.sens)
+  for i, s in ipairs(ds18b20.sens) do
+    print(string.format("  sensor #%d address: %s%s",  i, ('%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X'):format(s:byte(1,8)), s:byte(9) == 1 and " (parasite)" or ""))
+    end
+  end
+  for addr, temp in pairs(temp) do
+    print(string.format("Sensor %s: %s °C", ('%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X'):format(addr:byte(1,8)), temp))
+  end
+end
 
 function reverseBits(a)
     local b = 0x80
@@ -34,12 +45,10 @@ function reverseBits(a)
     return o
 end
 
-commads["demo"] = efx.demo
-
 function cmdfunc(client, data)
     print("Cmd: "..data)
-    if commads[data] then
-      commads[data]()
+    if mqtt_callbacks[data] then
+      mqtt_callbacks[data]()
     end
 end
 
@@ -58,9 +67,12 @@ end
 
 mqtt_callbacks["/radiolog/cmd"] = cmdfunc
 mqtt_callbacks["/radiolog/show"] = showfunc
+mqtt_callbacks["demo"] = efx.demo
+
+
 
 function dispatch(client, topic, data)
-    print("recv: " .. topic .. " " .. data)
+    print("mqtt msg: " .. topic .. " " .. data)
 
     if string.find(topic, dev_ID) ~= nil then
       print("For me..".. dev_ID)
@@ -69,121 +81,61 @@ function dispatch(client, topic, data)
         topic = "/radiolog/show"
       end
     end
-
+    print(mqtt_callbacks[topic])
     if data~=nil and mqtt_callbacks[topic] then
         mqtt_callbacks[topic](client, data)
     end
 end
 
-function foo(T)
-    print("Wifi connection is ready! "..T.IP)
-    efx.connect_ok()
-    wifi_connect = true
-    m = mqtt.Client("radiolog", 60)
+function handle_mqtt_error(client, reason)
+  tmr.create():alarm(10 * 1000, tmr.ALARM_SINGLE, do_mqtt_connect)
+end
 
-    m:on("message", dispatch)
-    m:on("connect", function(client)
-        mqtt_status = true
-        print ("connected")
-    end)
+function handle_mqtt_connect(client)
+    print("MQTT client connected")
+    client:publish("/radiolog/"..dev_ID.."/status", "Hello!", 0, 0)
 
-    m:on("offline", function(client)
-        print("offline")
-    end)
-
-    m:on("overflow", function(client, topic, data)
-        print(topic .. " partial overflowed message: " .. data )
-    end)
-
-
-    m:connect('mqtt.asterix.cloud', 1883, 0, function(client)
-    print("connected")
-    dev_ID = "Node_"..string.sub(string.gsub(wifi.sta.getmac(), ":",""), 7)
-
-    client:publish("/radiolog/"..dev_ID.."/status", "hello["..T.IP.."]", 0, 0)
     client:subscribe("/radiolog/show/#", 0, function(client)
       print("Subscribe [/radiolog/show/#] to topic with success")
     end)
+
     client:subscribe("/radiolog/cmd/#", 0, function(client)
       print("Subscribe [/radiolog/cmd/#] to topic with success")
     end)
 
-    tmr.alarm(0,10000, 1, function()
-        m:publish("/radiolog/"..dev_ID.."/status", tmr.time(), 0, 0)
+    tmr.create():alarm(30 * 1000, tmr.ALARM_AUTO, function()
+      if mqtt_client ~= nil then
+        mqtt_client:publish("/radiolog/"..dev_ID.."/status", tmr.time(), 0, 0)
+      end
     end)
 
-    tmr.alarm(0,15000, 1, function()
-        m:publish("/radiolog/"..dev_ID.."/status", meas_temp, 0, 0)
-    end)
-
-    end,
-    function(client, reason)
-        print("failed reason: " .. reason)
+    tmr.create():alarm(20 * 1000, tmr.ALARM_AUTO, function()
+      if mqtt_client ~= nil then
+        mqtt_client:publish("/radiolog/"..dev_ID.."/status", meas_temp, 0, 0)
+      end
     end)
 end
 
-net.init(nil, foo, nil)
+function do_mqtt_connect(m)
+  m:connect('mqtt.asterix.cloud', 1883, handle_mqtt_connect, handle_mqtt_error)
+end
 
+function on_networt_connect(T)
+  print("Wifi connection is ready! "..T.IP)
+  efx.connect_ok()
+  mqtt_client = mqtt.Client("Node-"..dev_ID, 60)
 
--- tmr.alarm(0,1000, 1, function()
---   print("Go to sleep..")
---   node.dsleep(60000000)
--- end)
+  mqtt_client:on("message", dispatch)
+  mqtt_client:on("connect", function(client) print ("MQTT connected") end)
+  mqtt_client:on("offline", function(client) print("MQTT Offline") end)
+  mqtt_client:on("overflow", function(client, topic, data)
+      print(topic .. " partial overflowed message: " .. data)
+  end)
+  do_mqtt_connect(mqtt_client)
+end
 
--- local measures = {}
+net.init(nil, on_networt_connect, nil)
+ds18b20:read_temp(readout, 2, ds18b20.C)
 
--- ds18b20.setup(OW_PIN)
--- i2c.setup(0, SDA, SCL, i2c.SLOW)
--- bmp085.setup()
-
--- tmr.alarm(0,2000, 1, function()
-    -- ds18b20.read(
-    --     function(ind, rom, res, temp, tdec, par)
-    --         measures["temp"..ind] = temp
-    --     end,{})
-
-    -- local status, temp, humi, temp_dec, humi_dec = dht.read(DHT_PIN)
-    -- if status == dht.OK then
-    --    measures["humidity"]  = humi
-    --    measures["humidityd"]  = humi_dec
-    --    measures["temphumi"]  = temp
-    --    measures["temphumid"]  = temp_dec
-    -- else
-    --     print(string.format("DHT error [%d] [%d]",  dht.ERROR_CHECKSUM, dht.ERROR_TIMEOUT))
-    -- end
-
-    -- -- measures["pressure"]  = bmp085.pressure()
-    -- -- measures["temppress"]  = bmp085.temperature()
-
-    -- for k,v in pairs(measures) do
-    --     print(k,v)
-    -- end
-    -- print("------------")
-
--- end)
-
-
--- local m_dist = {}
--- function dispatch(m,t,pl)
---     if pl~=nil and m_dis[t] then
---         m_dis[t](m,pl)
---     end
--- end
---
-
---while true do
---    for k,v in pairs(measures) do
---        print(k,v)
---    end
---    print("------------")
---    tmr.delay(2000000)
---end
-
-
--- local m_dis = {}
--- local mqtt_status = false
-
---local cfg = require 'cfg'
--- local lib = require 'lib'
 
 
