@@ -2,7 +2,7 @@ local mqtt_status = false
 local mqtt_callback = {}
 local dev_ID = "TEST"
 local connect = false
- 
+
 print("====== Main =====")
 
 mqtt_callback["/radiolog/cmd"] = cmdfunc
@@ -14,7 +14,7 @@ function dispatch(client,topic,data)
     end
 end
 
-function setup_mqtt()    
+function setup_mqtt()
     m = mqtt.Client("radiolog",60)
     m:on("message",dispatch)
 
@@ -40,6 +40,6 @@ function setup_mqtt()
         m:publish("/radiolog/"..dev_ID.."/status",tmr.time(),0,0)
     end)
     end)
-end 
+end
 
 setup_mqtt()

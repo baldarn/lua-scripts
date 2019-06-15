@@ -13,9 +13,9 @@ local btn_val2 = 1
 
 function get_buttonstate()
     tmr.create():alarm(300, tmr.ALARM_AUTO, function()
-        if gpio.read(btn1) == 0 then 
+        if gpio.read(btn1) == 0 then
             tmr.create():alarm(50, tmr.ALARM_SINGLE, function()
-                if(gpio.read(btn1) == 0) then 
+                if(gpio.read(btn1) == 0) then
                     btn_val = 0
                 end
             end)
@@ -23,9 +23,9 @@ function get_buttonstate()
             btn_val = 1
         end
 
-        if gpio.read(btn2) == 0 then 
+        if gpio.read(btn2) == 0 then
             tmr.create():alarm(50, tmr.ALARM_SINGLE, function()
-                if(gpio.read(btn2) == 0) then 
+                if(gpio.read(btn2) == 0) then
                     btn_val2 = 0
                 end
             end)
@@ -35,7 +35,7 @@ function get_buttonstate()
 
         print(btn_val)
         print(btn_val2)
-        
+
     end)
 end
 
