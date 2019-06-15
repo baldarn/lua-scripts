@@ -1,14 +1,12 @@
 local display = nil
 local efx = {}
 
-local all_on = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
-local all_off = {0, 0, 0, 0, 0, 0, 0, 0}
 local dataset = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
 
 function wave_effect()
   for i = 1,2 do
     display.brightness(7)
-    display.write(all_on)
+    display.write({0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff})
     tmr.delay(3000)
 
     local lum = 7
@@ -22,7 +20,7 @@ function wave_effect()
 
     tmr.delay(3000)
     display.brightness(7)
-    display.write(all_off)
+    display.write({0, 0, 0, 0, 0, 0, 0, 0})
     tmr.delay(3000)
 
     for cont = 8,1,-1 do
