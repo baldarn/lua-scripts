@@ -10,6 +10,7 @@ local ds18b20 = require("ds18b20")
 
 local dev_ID = "TEST" -- HOSTNAME
 local meas_temp = 25
+local lux = 1024
 local mqtt_callbacks = {}
 local mqtt_client
 
@@ -100,7 +101,7 @@ function handle_mqtt_connect(client)
       if mqtt_client ~= nil then
         mqtt_client:publish("/radiolog/"..dev_ID.."/uptime", tmr.time(), 0, 0)
         mqtt_client:publish("/radiolog/"..dev_ID.."/temp", meas_temp, 0, 0)
-        mqtt_client:publish("/radiolog/"..dev_ID.."/light", adc.read(0), 0, 0)
+        mqtt_client:publish("/radiolog/"..dev_ID.."/light", lux, 0, 0)
       end
     end)
 end
@@ -129,6 +130,7 @@ net.init(nil, on_networt_connect, nil)
 
 tmr.create():alarm(15 * 1000, tmr.ALARM_AUTO, function()
   ds18b20:read_temp(readout, 2, ds18b20.C)
+  lux = adc.read(0)
 end)
 
 
