@@ -14,9 +14,17 @@ local mqtt_callbacks = {}
 local mqtt_client
 
 
+
 print("=== Main ===")
 dev_ID = "Node_"..string.sub(string.gsub(wifi.sta.getmac(), ":",""), 7)
 print("- devId: "..dev_ID)
+
+if adc.force_init_mode(adc.INIT_ADC)
+then
+  node.restart()
+  return -- don't bother continuing, the restart is scheduled
+end
+
 matrix.init(7, 5)
 efx.init(matrix)
 efx.on_start()
@@ -91,12 +99,8 @@ function handle_mqtt_connect(client)
     tmr.create():alarm(30 * 1000, tmr.ALARM_AUTO, function()
       if mqtt_client ~= nil then
         mqtt_client:publish("/radiolog/"..dev_ID.."/uptime", tmr.time(), 0, 0)
-      end
-    end)
-
-    tmr.create():alarm(20 * 1000, tmr.ALARM_AUTO, function()
-      if mqtt_client ~= nil then
         mqtt_client:publish("/radiolog/"..dev_ID.."/temp", meas_temp, 0, 0)
+        mqtt_client:publish("/radiolog/"..dev_ID.."/light", adc.read(0), 0, 0)
       end
     end)
 end
@@ -126,6 +130,5 @@ net.init(nil, on_networt_connect, nil)
 tmr.create():alarm(15 * 1000, tmr.ALARM_AUTO, function()
   ds18b20:read_temp(readout, 2, ds18b20.C)
 end)
-
 
 
