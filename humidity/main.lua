@@ -7,8 +7,10 @@ print("=== Main ===")
 dofile('connect.lua')
 
 -- register humidity console event
-last_temperature = 0 
-last_humidity = 0
+last_temperature_in = 0 
+last_humidity_in = 0
+last_temperature_out = 0
+last_humidity_out = 0
 
 dofile('dht_setup.lua')
 
